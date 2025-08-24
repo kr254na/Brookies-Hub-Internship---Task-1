@@ -1,1 +1,1 @@
-# Brookies-Hub-Internship---Task-1
+# Brookies-Hub-Internship
