@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Manager — Simple Frontend</title>
+  <style>
+    :root {
+      --bg: #0f172a;       /* slate-900 */
+      --card: #111827;     /* gray-900 */
+      --muted: #1f2937;    /* gray-800 */
+      --text: #e5e7eb;     /* gray-200 */
+      --subtext: #9ca3af;  /* gray-400 */
+      --accent: #22d3ee;   /* cyan-400 */
+      --accent-2: #60a5fa; /* blue-400 */
+      --danger: #f87171;   /* red-400 */
+      --ok: #34d399;       /* emerald-400 */
+      --warning: #fbbf24;  /* amber-400 */
+      --radius: 16px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(135deg, #0b1220, #0f172a 35%, #0b1220);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin: 0;
+      letter-spacing: 0.3px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--card), #0b1220);
+      border: 1px solid #1f2937;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+
+    .muted {
+      color: var(--subtext);
+      font-size: 14px;
+    }
+
+    .input, select, textarea {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--muted);
+      border: 1px solid #374151; /* gray-700 */
+      border-radius: 12px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34,211,238,0.15); }
+
+    .label { font-size: 13px; color: var(--subtext); margin-bottom: 6px; display: block; }
+
+    .btn {
+      appearance: none;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #0b1220;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.04s ease, filter 0.2s ease;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: translateY(1px); }
+
+    .btn.secondary { background: none; color: var(--text); border: 1px solid #334155; }
+    .btn.danger { background: none; color: var(--danger); border: 1px solid #ef4444; }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; font-weight: 600; color: var(--subtext); font-size: 13px;
+      border-bottom: 1px solid #243041; padding: 10px;
+    }
+    tbody td {
+      border-bottom: 1px solid #1f2a38; padding: 12px 10px; vertical-align: top;
+    }
+
+    .status {
+      font-size: 13px; margin-left: 6px; opacity: 0.85;
+    }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; border: 1px dashed #334155; padding: 6px 10px; border-radius: 999px; font-size: 12px; color: var(--subtext);
+    }
+
+    .notice { margin-top: 12px; font-size: 12px; color: var(--subtext); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Task Manager</h1>
+        <div class="muted">Minimal frontend for your Spring Boot Task API</div>
+      </div>
+      <div class="pill">
+        <span>API:</span>
+        <code id="apiBaseLabel"></code>
+      </div>
+    </header>
+
+    <div class="row">
+      <!-- Left: Form Card -->
+      <section class="card">
+        <h2 style="margin:0 0 10px 0; font-size:18px;">Add / Update Task</h2>
+        <form id="taskForm">
+          <input type="hidden" id="currentId" value="" />
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div>
+              <label class="label" for="id">ID (required for update)</label>
+              <input class="input" id="id" type="number" placeholder="e.g. 3" />
+            </div>
+            <div>
+              <label class="label" for="title">Title</label>
+              <input class="input" id="title" type="text" placeholder="e.g. Reading" required />
+            </div>
+          </div>
+
+          <div style="margin-top: 14px;">
+            <label class="label" for="description">Description</label>
+            <textarea class="input" id="description" rows="3" placeholder="e.g. 30 mins of Java docs"></textarea>
+          </div>
+
+          <div class="toolbar" style="margin-top: 14px;">
+            <button type="submit" class="btn" id="submitBtn">Save Task</button>
+            <button type="button" class="btn secondary" id="resetBtn">Reset</button>
+            <span class="status" id="formStatus"></span>
+          </div>
+          <div class="notice">Note: For <b>update</b>, enter an existing ID and press Save. For <b>create</b>, leave ID blank (backend may auto-generate) or enter a new one if your API expects it.</div>
+        </form>
+      </section>
+
+      <!-- Right: Controls + Table Card -->
+      <section class="card">
+        <div style="display:flex; align-items:center; justify-content: space-between; gap: 10px;">
+          <h2 style="margin:0; font-size:18px;">Tasks</h2>
+          <div class="toolbar">
+            <button class="btn secondary" id="refreshBtn">Refresh</button>
+          </div>
+        </div>
+
+        <div style="overflow:auto; margin-top: 12px;">
+          <table id="tasksTable">
+            <thead>
+              <tr>
+                <th style="width:80px;">ID</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th style="width:200px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <p class="notice">If you see CORS errors in the browser console, add <code>@CrossOrigin(origins = "http://localhost:5500")</code> (or <code>*</code>) on your Spring controller while testing locally.</p>
+  </div>
+
+  <script>
+    // ======= Configure your backend here =======
+    const apiBase = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:8080' // Spring Boot default
+      : `${location.origin}`;    // same-origin when hosted together
+
+    document.getElementById('apiBaseLabel').textContent = `${apiBase}`;
+
+    // Endpoints (aligned with your controller)
+    const ENDPOINTS = {
+      list: () => `${apiBase}/tasks`,
+      create: () => `${apiBase}/tasks/new`,
+      update: (id) => `${apiBase}/tasks/${id}`,
+      remove: (id) => `${apiBase}/tasks/${id}`,
+    };
+
+    // Utilities
+    const qs = (s, el=document) => el.querySelector(s);
+    const qsa = (s, el=document) => Array.from(el.querySelectorAll(s));
+
+    const tbody = qs('#tasksTable tbody');
+    const form = qs('#taskForm');
+    const submitBtn = qs('#submitBtn');
+    const formStatus = qs('#formStatus');
+    const resetBtn = qs('#resetBtn');
+
+    function setStatus(msg, kind='info') {
+      formStatus.textContent = msg || '';
+      formStatus.style.color = {
+        info: 'var(--subtext)',
+        ok: 'var(--ok)',
+        warn: 'var(--warning)',
+        err: 'var(--danger)'
+      }[kind] || 'var(--subtext)';
+    }
+
+    function getFormData() {
+      const id = qs('#id').value.trim();
+      const title = qs('#title').value.trim();
+      const description = qs('#description').value.trim();
+      return { id: id === '' ? null : Number(id), title, description };
+    }
+
+    function fillForm(task) {
+      qs('#id').value = task.id ?? '';
+      qs('#title').value = task.title ?? '';
+      qs('#description').value = task.description ?? '';
+      submitBtn.textContent = task.id ? 'Update Task' : 'Save Task';
+    }
+
+    function clearForm() {
+      form.reset();
+      submitBtn.textContent = 'Save Task';
+      setStatus('');
+    }
+
+    async function loadTasks() {
+      setStatus('Loading tasks...');
+      try {
+        const res = await fetch(ENDPOINTS.list());
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const data = await res.json(); // expects array of {id,title,description}
+        renderRows(data);
+        setStatus(`Loaded ${data.length} task(s).`, 'ok');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Failed to load tasks: ${err.message}`, 'err');
+      }
+    }
+
+    function renderRows(tasks) {
+      tbody.innerHTML = '';
+      if (!tasks || tasks.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="4" class="muted">No tasks found.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+
+      for (const t of tasks) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><code>${t.id ?? ''}</code></td>
+          <td>${escapeHtml(t.title ?? '')}</td>
+          <td>${escapeHtml(t.description ?? '')}</td>
+          <td>
+            <div class="toolbar">
+              <button class="btn secondary" data-action="edit">Edit</button>
+              <button class="btn danger" data-action="delete">Delete</button>
+            </div>
+          </td>`;
+
+        tr.querySelector('[data-action="edit"]').addEventListener('click', () => {
+          fillForm(t);
+          setStatus(`Editing task #${t.id}`);
+        });
+
+        tr.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+          if (!confirm(`Delete task #${t.id}?`)) return;
+          await deleteTask(t.id);
+        });
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    async function createTask(payload) {
+      const res = await fetch(ENDPOINTS.create(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Your backend expects fields: id (optional), title, description
+          ...(payload.id !== null ? { id: payload.id } : {}),
+          title: payload.title,
+          description: payload.description
+        })
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.json();
+    }
+
+    async function updateTask(id, payload) {
+      const res = await fetch(ENDPOINTS.update(id), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: payload.title, description: payload.description })
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.text(); // your controller returns boolean; we'll ignore the value
+    }
+
+    async function deleteTask(id) {
+      setStatus(`Deleting #${id}...`);
+      try {
+        const res = await fetch(ENDPOINTS.remove(id), { method: 'DELETE' });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        await loadTasks();
+        setStatus(`Deleted #${id}`, 'ok');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Failed to delete #${id}: ${err.message}`, 'err');
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = getFormData();
+
+      if (!payload.title) {
+        setStatus('Title is required', 'warn');
+        return;
+      }
+
+      try {
+        if (payload.id === null) {
+          setStatus('Creating task...');
+          await createTask(payload);
+          clearForm();
+          setStatus('Task created!', 'ok');
+        } else {
+          setStatus(`Updating #${payload.id}...`);
+          await updateTask(payload.id, payload);
+          setStatus('Task updated!', 'ok');
+        }
+        await loadTasks();
+      } catch (err) {
+        console.error(err);
+        setStatus(err.message, 'err');
+      }
+    });
+
+    resetBtn.addEventListener('click', () => clearForm());
+    qs('#refreshBtn').addEventListener('click', () => loadTasks());
+
+    // Initial load
+    loadTasks();
+  </script>
+</body>
+</html>
